@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  snowbox:
+    user: root
+    build:
+      context: ./snowbox
+      args:
+        USER_ID: $USER_ID
+        GROUP_ID: $GROUP_ID
+    networks:
+      lan:
+        ipv4_address: "$SNOWBOX_LAN_ADDR"
+    volumes:
+        - "$SNOWFLAKE_WEBEXT_PATH":/go/src/snowflake-webext
+        - "$SNOWFLAKE_SRC_PATH":/go/src/snowflake
+        - ./start-scripts:/opt/start-scripts
+    cap_add:
+      - ALL # TODO: check which for ip route
+    command: /opt/start-scripts/snowbox-start.sh
+    env_file:
+     - .env
+  nat-router:
+    build: ./nat-router
+    networks:
+      lan:
+        ipv4_address: "$NAT_ROUTER_LAN_ADDR"
+      wan:
+        ipv4_address: "$NAT_ROUTER_WAN_ADDR"
+    volumes:
+        - ./start-scripts:/opt/start-scripts
+    command: /opt/start-scripts/nat-router-start.sh
+    env_file:
+     - .env
+    cap_add:
+      - ALL # TODO: check which for iptables
+
+networks:
+  lan:
+    ipam:
+      config:
+        - subnet: "$LAN_SUBNET/$LAN_SUFFIX"
+          ip_range: "$LAN_SUBNET/$LAN_SUFFIX"
+          gateway: "$LAN_HOST_GATEWAY"
+  wan:
+    ipam:
+      config:
+        - subnet: "$WAN_SUBNET/$WAN_SUFFIX"
+          ip_range: "$WAN_SUBNET/$WAN_SUFFIX"
+          gateway: "$WAN_HOST_GATEWAY"
