@@ -10,6 +10,8 @@ services:
       NAT_ROUTER_LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"
     volumes:
         - ./start-scripts:/opt/start-scripts
+    depends_on:
+      - proxy-nat-router
     networks:
       proxy-lan:
         ipv4_address: "$PROXY_LAN_ADDR"
@@ -45,6 +47,8 @@ services:
       TORRC_PATH: /opt/torrc-client
     volumes:
         - ./start-scripts:/opt/start-scripts
+    depends_on:
+      - client-nat-router
     networks:
       client-lan:
         ipv4_address: "$CLIENT_LAN_ADDR"
@@ -75,6 +79,14 @@ services:
     networks:
       wan:
         ipv4_address: "$BROKER_WAN_ADDR"
+
+  stun-server:
+    image: coturn/coturn:4-debian
+    command: ["--log-file=stdout"]
+    networks:
+      wan:
+        ipv4_address: "$STUN_WAN_ADDR"
+
 
 networks:
   proxy-lan:
