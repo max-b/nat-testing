@@ -1,57 +1,75 @@
 # nat-testing
 
-This is just a proof of concept demonstrating how one could use docker/docker-compose networking to create a testbed for evaluating NAT traversal for the snowflake protocol.
+This is a docker based testbed for evaluating [snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake) NAT traversal.
 
 ## Concepts
-This creates 2 hosts, one running a [snowbox](https://github.com/cohosh/snowbox) container and one running some very simple iptables and routing rules which make it into a NAT router:
+This currently creates 5 services:
+- [snowflake-proxy](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/proxy)
+- A nat router connecting the snowflake-proxy to the WAN network
+- [snowflake-client](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/client)
+- A nat router connecting the snowflake-client to the WAN network
+- [snowflake-broker](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/broker)
 
-![nat-testing basic topology](./nat-testing-1.png)
-
-
-I'm not actually super familiar with various NAT implementations, but I _believe_ that they could be implemented with iptables. 
-
-[This answer](https://stackoverflow.com/a/28525022/1787596) seems to outline the iptables rules that would implement various NAT strategies, but I haven't thoroughly evaluated it and would need to do more research. 
-
-If it's not possible to implement the full variety of NAT strategies with iptables this is an extremely flawed approach 🙃.
-
-
-Ultimately, I think it would be more straightforward to actually have each component of the snowflake topology running in its own container:
-![nat-testing advanced topology](./nat-testing-2.png)
-
+## Topology
+![nat-testing topology](./nat-testing.png) 
 
 ## Setup
-The [.env](./.env) file currently holds all of the configurable values. 
-
-At the moment, before running, you'll need to fill out the paths to your [snowflake-webext](https://gitweb.torproject.org/pluggable-transports/snowflake-webext.git) and [snowflake](https://gitweb.torproject.org/pluggable-transports/snowflake.git) local repositories.
-
-You'll also have to specify your own user id and group id.
-
-[snowbox](https://github.com/cohosh/snowbox) is currently configured as a git submodule, so after cloning this repo, update submodules:
-```
-$ git submodule update --init
-```
+The [.env](./.env) file currently holds all of the configurable values. You _shouldn't_ need to change anything.
 
 ## Running
-First start the nat-router:
+Running all services _should_ (🤞) be as simple as:
 ```
-$ docker-compose up -d nat-router
-```
-
-Then start the snowbox container:
-```
-$ docker-compose up -d snowbox
+$ docker-compose up -d
 ```
 
-Each of these containers have start scripts specified in their docker-compose definitions which setup networking and then simply `sleep infinity`. 
-
-This is a just a hacky and temporary way to allow for manual exploration on the `snowbox` container:
+To see logs:
 ```
-$ docker-compose exec snowbox /bin/bash
-$ su snowflake
-$ script.sh -b
-$ script.sh -c
+$ docker-compose logs -f
 ```
 
-I wasn't super familiar with the build scripts, so I attempted to leave them as is, especially since this is more of a sandbox POC.
+Make a curl command on the client through tor to check connectivity:
+```
+$ docker-compose exec snowflake-client curl -x socks5h://localhost:9050 https://startpage.com
+```
 
-I'm not 100% sure they work correctly at the moment, but I wanted to just demonstrate the idea of the network testbed.
+Test nat type:
+
+```
+$ docker-compose exec snowflake-client stun-nat-behaviour
+$ docker-compose exec snowflake-proxy stun-nat-behaviour
+```
+
+Run arbitrary commands on any service you'd like eg:
+```
+$ docker-compose exec snowflake-client ping 8.8.8.8
+$ docker-compose exec snowflake-broker ps aux
+$ docker-compose exec proxy-nat-router /bin/sh
+```
+
+## Rebuilding
+The initial `docker-compose up` will build the relevant images, but subsequent executions will not. If you want to rebuild the container:
+```
+$ docker-compose --build -d up
+```
+
+## Stopping
+To stop everything and clear volumes (can be helpful for cleanup):
+```
+$ docker-compose down --volumes
+```
+
+This won't remove networks, so if you'd like to clean them up, you _should_ be able to:
+```
+$ docker network prune
+```
+
+## NOTES:
+- With the default `stun-nat-behaviour` command, in order to reach the default stun server (stun.voip.blackberry.com:3478), the services will likely have to travel several NATs. 
+That would be due to the "WAN" being simulated. In reality, on a local docker testbed environment, the "WAN" will also be behind some type of NAT, which will affect the NAT that is detected.
+In order to effectively evaluate the actual behavior of the NAT re: our WAN, we'll need to run a TUN server attached to the "WAN" interface.
+
+- No snowflake-server/tor relay is included. We're currently depending on the external wss://snowflake.torproject.net/ websocket relay that the snowflake-proxy will connect to.
+
+- The broker is not behind a NAT. I think that's the expected deployment strategy. No fronting is occuring between the proxy/client and the broker.
+
+- I was occasionally getting "address is already taken" errors when trying to bring up certain containers. I'm not 100% sure if that was due to a slightly dirty working state, but the way I was reliably able to fix that was by changing the address for that container's "wan" interface.
