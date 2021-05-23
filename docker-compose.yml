@@ -2,9 +2,9 @@ version: "3.9"
 
 services:
   snowflake-proxy:
-    image: thetorproject/snowflake-proxy:latest
+    build: ./snowflake-proxy
     entrypoint: /opt/start-scripts/nat-client-entrypoint.sh
-    # TODO: update once broker and server are up
+    # TODO: update server is added
     command: [ "proxy" , "--broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "--relay" , "wss://snowflake.torproject.net/" ]
     environment:
       NAT_ROUTER_LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"

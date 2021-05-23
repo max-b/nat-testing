@@ -1,4 +1,4 @@
-FROM golang:1.13
+FROM thetorproject/snowflake-proxy:latest
 
 # TODO: do we need these?
 RUN apt-get update && apt-get install -y git libx11-dev tor net-tools less apt-transport-https
