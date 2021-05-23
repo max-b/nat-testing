@@ -71,7 +71,6 @@ services:
 
   snowflake-broker:
     build: ./broker
-    # TODO: need cmd?
     command: broker -addr ":$BROKER_PORT" -disable-tls -unsafe-logging
     networks:
       wan:
@@ -98,23 +97,3 @@ networks:
         - subnet: "$WAN_SUBNET/$WAN_SUFFIX"
           ip_range: "$WAN_SUBNET/$WAN_SUFFIX"
           gateway: "$WAN_HOST_GATEWAY"
-
-  # snowbox:
-  #   user: root
-  #   build:
-  #     context: ./snowbox
-  #     args:
-  #       USER_ID: $USER_ID
-  #       GROUP_ID: $GROUP_ID
-  #   networks:
-  #     lan:
-  #       ipv4_address: "$SNOWBOX_LAN_ADDR"
-  #   volumes:
-  #       - "$SNOWFLAKE_WEBEXT_PATH":/go/src/snowflake-webext
-  #       - "$SNOWFLAKE_SRC_PATH":/go/src/snowflake
-  #       - ./start-scripts:/opt/start-scripts
-  #   cap_add:
-  #     - ALL # TODO: check which for ip route
-  #   command: /opt/start-scripts/snowbox-start.sh
-  #   env_file:
-  #    - .env

@@ -1,6 +1,3 @@
-[submodule "snowbox"]
-	path = snowbox
-	url = https://github.com/cohosh/snowbox.git
 [submodule "snowflake"]
 	path = snowflake
 	url = https://git.torproject.org/pluggable-transports/snowflake.git
