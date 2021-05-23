@@ -3,19 +3,25 @@ version: "3.9"
 services:
   snowflake-proxy:
     image: thetorproject/snowflake-proxy:latest
-    container_name: snowflake-proxy # TODO: necessary??
-    ## TODO: update once broker and server are up
-    entrypoint: [ "proxy" , "--broker" , "https://snowflake-broker.torproject.net/" , "--relay" , "wss://snowflake.torproject.net/" ]
+    entrypoint: /opt/start-scripts/nat-client-entrypoint.sh
+    # TODO: update once broker and server are up
+    command: [ "proxy" , "--broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "--relay" , "wss://snowflake.torproject.net/" ]
+    environment:
+      NAT_ROUTER_LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"
+    volumes:
+        - ./start-scripts:/opt/start-scripts
     networks:
       proxy-lan:
         ipv4_address: "$PROXY_LAN_ADDR"
+    cap_add:
+      - ALL # TODO: check which for ip route
 
   proxy-nat-router:
     build: ./nat-router
     networks:
       proxy-lan:
         ipv4_address: "$PROXY_NAT_ROUTER_LAN_ADDR"
-      proxy-wan:
+      wan:
         ipv4_address: "$PROXY_NAT_ROUTER_WAN_ADDR"
     volumes:
         - ./start-scripts:/opt/start-scripts
@@ -25,9 +31,16 @@ services:
     environment:
       LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"
       WAN_ADDR: "$PROXY_NAT_ROUTER_WAN_ADDR"
-      WAN_HOST_GATEWAY: "$PROXY_WAN_HOST_GATEWAY"
     cap_add:
       - ALL # TODO: check which for iptables
+
+  snowflake-broker:
+    build: ./broker
+    # TODO: need cmd?
+    command: broker -addr ":$BROKER_PORT" -disable-tls -unsafe-logging
+    networks:
+      wan:
+        ipv4_address: "$BROKER_WAN_ADDR"
 
 networks:
   proxy-lan:
@@ -36,13 +49,13 @@ networks:
         - subnet: "$PROXY_LAN_SUBNET/$PROXY_LAN_SUFFIX"
           ip_range: "$PROXY_LAN_SUBNET/$PROXY_LAN_SUFFIX"
           gateway: "$PROXY_LAN_HOST_GATEWAY"
-  proxy-wan:
+
+  wan:
     ipam:
       config:
-        - subnet: "$PROXY_WAN_SUBNET/$PROXY_WAN_SUFFIX"
-          ip_range: "$PROXY_WAN_SUBNET/$PROXY_WAN_SUFFIX"
-          gateway: "$PROXY_WAN_HOST_GATEWAY"
-
+        - subnet: "$WAN_SUBNET/$WAN_SUFFIX"
+          ip_range: "$WAN_SUBNET/$WAN_SUFFIX"
+          gateway: "$WAN_HOST_GATEWAY"
 
   # snowbox:
   #   user: root
