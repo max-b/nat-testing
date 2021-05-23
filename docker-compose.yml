@@ -1,50 +1,65 @@
 version: "3.9"
 
 services:
-  snowbox:
-    user: root
-    build:
-      context: ./snowbox
-      args:
-        USER_ID: $USER_ID
-        GROUP_ID: $GROUP_ID
+  snowflake-proxy:
+    image: thetorproject/snowflake-proxy:latest
+    container_name: snowflake-proxy # TODO: necessary??
+    ## TODO: update once broker and server are up
+    entrypoint: [ "proxy" , "--broker" , "https://snowflake-broker.torproject.net/" , "--relay" , "wss://snowflake.torproject.net/" ]
     networks:
-      lan:
-        ipv4_address: "$SNOWBOX_LAN_ADDR"
-    volumes:
-        - "$SNOWFLAKE_WEBEXT_PATH":/go/src/snowflake-webext
-        - "$SNOWFLAKE_SRC_PATH":/go/src/snowflake
-        - ./start-scripts:/opt/start-scripts
-    cap_add:
-      - ALL # TODO: check which for ip route
-    command: /opt/start-scripts/snowbox-start.sh
-    env_file:
-     - .env
-  nat-router:
+      proxy-lan:
+        ipv4_address: "$PROXY_LAN_ADDR"
+
+  proxy-nat-router:
     build: ./nat-router
     networks:
-      lan:
-        ipv4_address: "$NAT_ROUTER_LAN_ADDR"
-      wan:
-        ipv4_address: "$NAT_ROUTER_WAN_ADDR"
+      proxy-lan:
+        ipv4_address: "$PROXY_NAT_ROUTER_LAN_ADDR"
+      proxy-wan:
+        ipv4_address: "$PROXY_NAT_ROUTER_WAN_ADDR"
     volumes:
         - ./start-scripts:/opt/start-scripts
     command: /opt/start-scripts/nat-router-start.sh
     env_file:
      - .env
+    environment:
+      LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"
+      WAN_ADDR: "$PROXY_NAT_ROUTER_WAN_ADDR"
+      WAN_HOST_GATEWAY: "$PROXY_WAN_HOST_GATEWAY"
     cap_add:
       - ALL # TODO: check which for iptables
 
 networks:
-  lan:
+  proxy-lan:
     ipam:
       config:
-        - subnet: "$LAN_SUBNET/$LAN_SUFFIX"
-          ip_range: "$LAN_SUBNET/$LAN_SUFFIX"
-          gateway: "$LAN_HOST_GATEWAY"
-  wan:
+        - subnet: "$PROXY_LAN_SUBNET/$PROXY_LAN_SUFFIX"
+          ip_range: "$PROXY_LAN_SUBNET/$PROXY_LAN_SUFFIX"
+          gateway: "$PROXY_LAN_HOST_GATEWAY"
+  proxy-wan:
     ipam:
       config:
-        - subnet: "$WAN_SUBNET/$WAN_SUFFIX"
-          ip_range: "$WAN_SUBNET/$WAN_SUFFIX"
-          gateway: "$WAN_HOST_GATEWAY"
+        - subnet: "$PROXY_WAN_SUBNET/$PROXY_WAN_SUFFIX"
+          ip_range: "$PROXY_WAN_SUBNET/$PROXY_WAN_SUFFIX"
+          gateway: "$PROXY_WAN_HOST_GATEWAY"
+
+
+  # snowbox:
+  #   user: root
+  #   build:
+  #     context: ./snowbox
+  #     args:
+  #       USER_ID: $USER_ID
+  #       GROUP_ID: $GROUP_ID
+  #   networks:
+  #     lan:
+  #       ipv4_address: "$SNOWBOX_LAN_ADDR"
+  #   volumes:
+  #       - "$SNOWFLAKE_WEBEXT_PATH":/go/src/snowflake-webext
+  #       - "$SNOWFLAKE_SRC_PATH":/go/src/snowflake
+  #       - ./start-scripts:/opt/start-scripts
+  #   cap_add:
+  #     - ALL # TODO: check which for ip route
+  #   command: /opt/start-scripts/snowbox-start.sh
+  #   env_file:
+  #    - .env
