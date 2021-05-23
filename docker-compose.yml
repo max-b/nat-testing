@@ -34,6 +34,41 @@ services:
     cap_add:
       - ALL # TODO: check which for iptables
 
+  snowflake-client:
+    build: ./snowflake-client
+    entrypoint: /opt/start-scripts/snowflake-client-entrypoint.sh
+    command: tor -f /opt/torrc-client
+    env_file:
+     - .env
+    environment:
+      NAT_ROUTER_LAN_ADDR: "$CLIENT_NAT_ROUTER_LAN_ADDR"
+      TORRC_PATH: /opt/torrc-client
+    volumes:
+        - ./start-scripts:/opt/start-scripts
+    networks:
+      client-lan:
+        ipv4_address: "$CLIENT_LAN_ADDR"
+    cap_add:
+      - ALL # TODO: check which for ip route
+
+  client-nat-router:
+    build: ./nat-router
+    networks:
+      client-lan:
+        ipv4_address: "$CLIENT_NAT_ROUTER_LAN_ADDR"
+      wan:
+        ipv4_address: "$CLIENT_NAT_ROUTER_WAN_ADDR"
+    volumes:
+        - ./start-scripts:/opt/start-scripts
+    command: /opt/start-scripts/nat-router-start.sh
+    env_file:
+     - .env
+    environment:
+      LAN_ADDR: "$CLIENT_NAT_ROUTER_LAN_ADDR"
+      WAN_ADDR: "$CLIENT_NAT_ROUTER_WAN_ADDR"
+    cap_add:
+      - ALL # TODO: check which for iptables
+
   snowflake-broker:
     build: ./broker
     # TODO: need cmd?
@@ -49,6 +84,13 @@ networks:
         - subnet: "$PROXY_LAN_SUBNET/$PROXY_LAN_SUFFIX"
           ip_range: "$PROXY_LAN_SUBNET/$PROXY_LAN_SUFFIX"
           gateway: "$PROXY_LAN_HOST_GATEWAY"
+
+  client-lan:
+    ipam:
+      config:
+        - subnet: "$CLIENT_LAN_SUBNET/$CLIENT_LAN_SUFFIX"
+          ip_range: "$CLIENT_LAN_SUBNET/$CLIENT_LAN_SUFFIX"
+          gateway: "$CLIENT_LAN_HOST_GATEWAY"
 
   wan:
     ipam:
