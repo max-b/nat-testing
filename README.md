@@ -3,12 +3,15 @@
 This is a docker based testbed for evaluating [snowflake](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake) NAT traversal.
 
 ## Concepts
-This currently creates 5 services:
-- [snowflake-proxy](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/proxy)
+This currently creates 8 services:
+- A [snowflake-proxy](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/proxy) behind a nat router
+- A [snowflake-proxy](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/proxy) that's not behind a nat router
 - A nat router connecting the snowflake-proxy to the WAN network
-- [snowflake-client](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/client)
+- A [snowflake-client](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/client) behind a nat router
+- A [snowflake-client](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/client) that's not behind a nat router
 - A nat router connecting the snowflake-client to the WAN network
 - [snowflake-broker](https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake/-/tree/main/broker)
+- A [TURN/STUN](https://hub.docker.com/r/coturn/coturn) server
 
 ## Topology
 ![nat-testing topology](./nat-testing.png) 
@@ -48,10 +51,31 @@ $ docker-compose exec snowflake-broker ps aux
 $ docker-compose exec proxy-nat-router /bin/sh
 ```
 
+Test if a client is successfully able to make a tor-proxied request:
+```
+$ docker-compose exec snowflake-client curl -x socks5h://localhost:9050 https://startpage.com
+$ docker-compose exec snowflake-client-no-nat curl -x socks5h://localhost:9050 https://startpage.com
+```
+(`snowflake-client-no-nat` is a snowflake-client that is not behind a NAT)
+
+Get logs from a service:
+```
+$ docker-compose logs -f snowflake-proxy
+$ docker-compose logs -f snowflake-proxy-no-nat
+$ docker-compose logs -f snowflake-client
+$ docker-compose logs -f snowflake-client-no-nat
+```
+
+Some logs are written to file instead of stdout, so you may need to tail them:
+```
+$ docker-compose exec snowflake-client-no-nat /usr/bin/tail -f /tmp/snowflake-client.log
+```
+
+
 ## Rebuilding
 The initial `docker-compose up` will build the relevant images, but subsequent executions will not. If you want to rebuild the container:
 ```
-$ docker-compose --build -d up
+$ docker-compose up --build -d
 ```
 
 ## Stopping
@@ -66,10 +90,6 @@ $ docker network prune
 ```
 
 ## NOTES:
-- With the default `stun-nat-behaviour` command, in order to reach the default stun server (stun.voip.blackberry.com:3478), the services will likely have to travel several NATs. 
-That would be due to the "WAN" being simulated. In reality, on a local docker testbed environment, the "WAN" will also be behind some type of NAT, which will affect the NAT that is detected.
-In order to effectively evaluate the actual behavior of the NAT re: our WAN, we'll need to run a TUN server attached to the "WAN" interface.
-
 - No snowflake-server/tor relay is included. We're currently depending on the external wss://snowflake.torproject.net/ websocket relay that the snowflake-proxy will connect to.
 
 - The broker is not behind a NAT. I think that's the expected deployment strategy. No fronting is occuring between the proxy/client and the broker.
