@@ -1,11 +1,28 @@
 version: "3.9"
 
 services:
+  snowflake-proxy-no-nat:
+    build: ./snowflake-proxy
+    entrypoint: /opt/start-scripts/noop-entrypoint.sh
+    command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-stun", "stun:$STUN_WAN_ADDR:3478", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
+    environment:
+      NAT_ROUTER_LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"
+    volumes:
+        - ./start-scripts:/opt/start-scripts
+    networks:
+      wan:
+        ipv4_address: "$PROXY_NO_NAT_WAN_ADDR"
+    cap_add:
+      - ALL # TODO: check which for ip route
+
   snowflake-proxy:
     build: ./snowflake-proxy
     entrypoint: /opt/start-scripts/nat-client-entrypoint.sh
-    # TODO: update server is added
-    command: [ "proxy" , "--broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "--relay" , "wss://snowflake.torproject.net/" ]
+    command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-stun", "stun:$STUN_WAN_ADDR:3478", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
+    # attempt to try default stun:
+    # command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
+    # using default broker and stun:
+    # command: proxy -unsafe-logging -log /tmp/snowflake-proxy.log
     environment:
       NAT_ROUTER_LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"
     volumes:
@@ -32,9 +49,27 @@ services:
      - .env
     environment:
       LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"
+      LAN_SUBNET: "$PROXY_LAN_SUBNET"
+      LAN_SUFFIX: "$PROXY_LAN_SUFFIX"
       WAN_ADDR: "$PROXY_NAT_ROUTER_WAN_ADDR"
     cap_add:
       - ALL # TODO: check which for iptables
+
+  snowflake-client-no-nat:
+    build: ./snowflake-client
+    entrypoint: /opt/start-scripts/snowflake-client-no-nat-entrypoint.sh
+    command: tor -f /opt/torrc-client
+    env_file:
+     - .env
+    environment:
+      TORRC_PATH: /opt/torrc-client
+    volumes:
+        - ./start-scripts:/opt/start-scripts
+    networks:
+      wan:
+        ipv4_address: "$CLIENT_NO_NAT_WAN_ADDR"
+    cap_add:
+      - ALL # TODO: check which for ip route
 
   snowflake-client:
     build: ./snowflake-client
@@ -69,13 +104,15 @@ services:
      - .env
     environment:
       LAN_ADDR: "$CLIENT_NAT_ROUTER_LAN_ADDR"
+      LAN_SUBNET: "$CLIENT_LAN_SUBNET"
+      LAN_SUFFIX: "$CLIENT_LAN_SUFFIX"
       WAN_ADDR: "$CLIENT_NAT_ROUTER_WAN_ADDR"
     cap_add:
       - ALL # TODO: check which for iptables
 
   snowflake-broker:
     build: ./broker
-    command: broker -addr ":$BROKER_PORT" -disable-tls -unsafe-logging
+    command: broker -addr ":$BROKER_PORT" -disable-tls -unsafe-logging -metrics-log /tmp/snowflake-broker-metrics.log -disable-geoip
     networks:
       wan:
         ipv4_address: "$BROKER_WAN_ADDR"
