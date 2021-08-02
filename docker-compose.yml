@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   snowflake-proxy-no-nat:
-    build: ./snowflake-proxy
+    build: ./snowflake
     entrypoint: /opt/start-scripts/noop-entrypoint.sh
     command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-stun", "stun:$STUN_WAN_ADDR:3478", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
     environment:
@@ -16,7 +16,7 @@ services:
       - ALL # TODO: check which for ip route
 
   snowflake-proxy:
-    build: ./snowflake-proxy
+    build: ./snowflake
     entrypoint: /opt/start-scripts/nat-client-entrypoint.sh
     command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-stun", "stun:$STUN_WAN_ADDR:3478", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
     # attempt to try default stun:
@@ -57,7 +57,7 @@ services:
       - ALL # TODO: check which for iptables
 
   snowflake-client-no-nat:
-    build: ./snowflake-client
+    build: ./snowflake
     entrypoint: /opt/start-scripts/snowflake-client-no-nat-entrypoint.sh
     command: tor -f /opt/torrc-client
     env_file:
@@ -73,7 +73,7 @@ services:
       - ALL # TODO: check which for ip route
 
   snowflake-client:
-    build: ./snowflake-client
+    build: ./snowflake
     entrypoint: /opt/start-scripts/snowflake-client-entrypoint.sh
     command: tor -f /opt/torrc-client
     env_file:
@@ -113,7 +113,7 @@ services:
       - ALL # TODO: check which for iptables
 
   snowflake-broker:
-    build: ./broker
+    build: ./snowflake
     command: broker -addr ":$BROKER_PORT" -disable-tls -unsafe-logging -metrics-log /tmp/snowflake-broker-metrics.log -disable-geoip
     networks:
       wan:
