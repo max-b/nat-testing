@@ -52,6 +52,7 @@ services:
       LAN_SUBNET: "$PROXY_LAN_SUBNET"
       LAN_SUFFIX: "$PROXY_LAN_SUFFIX"
       WAN_ADDR: "$PROXY_NAT_ROUTER_WAN_ADDR"
+      RANDOMIZE_NAT: "$RANDOMIZE_PROXY_NAT"
     cap_add:
       - ALL # TODO: check which for iptables
 
@@ -107,6 +108,7 @@ services:
       LAN_SUBNET: "$CLIENT_LAN_SUBNET"
       LAN_SUFFIX: "$CLIENT_LAN_SUFFIX"
       WAN_ADDR: "$CLIENT_NAT_ROUTER_WAN_ADDR"
+      RANDOMIZE_NAT: "$RANDOMIZE_CLIENT_NAT"
     cap_add:
       - ALL # TODO: check which for iptables
 
