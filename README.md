@@ -37,7 +37,7 @@ $ docker-compose exec snowflake-client curl -x socks5h://localhost:9050 https://
 
 Test nat type:
 
-where 172.21.0.20 is the $STUN_WAN_ADDR as described in the [.env](./.env) file (a future improvement is to figure out how to just use that variable here)
+where 172.21.0.20 is the $COTURN_WAN_ADDR1 as described in the [.env](./.env) file (a future improvement is to figure out how to just use that variable here)
 ```
 $ docker-compose exec snowflake-proxy stun-nat-behaviour -server 172.21.0.20:3478
 $ docker-compose exec snowflake-client stun-nat-behaviour -server 172.21.0.20:3478
