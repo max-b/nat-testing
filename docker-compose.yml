@@ -4,7 +4,7 @@ services:
   snowflake-proxy-no-nat:
     build: ./snowflake
     entrypoint: /opt/start-scripts/noop-entrypoint.sh
-    command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-stun", "stun:$STUN_WAN_ADDR:3478", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
+    command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-stun", "stun:$COTURN_WAN_ADDR1:3478", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
     environment:
       NAT_ROUTER_LAN_ADDR: "$PROXY_NAT_ROUTER_LAN_ADDR"
     volumes:
@@ -18,7 +18,7 @@ services:
   snowflake-proxy:
     build: ./snowflake
     entrypoint: /opt/start-scripts/nat-client-entrypoint.sh
-    command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-stun", "stun:$STUN_WAN_ADDR:3478", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
+    command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-stun", "stun:$COTURN_WAN_ADDR1:3478", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
     # attempt to try default stun:
     # command: [ "proxy" , "-broker" , "http://$BROKER_WAN_ADDR:$BROKER_PORT/" , "-relay" , "wss://snowflake.torproject.net/", "-log", "/tmp/snowflake-proxy.log", "-unsafe-logging" ]
     # using default broker and stun:
@@ -119,12 +119,23 @@ services:
       wan:
         ipv4_address: "$BROKER_WAN_ADDR"
 
-  stun-server:
-    image: coturn/coturn:4-debian
+  coturn-server:
+    build: ./coturn
+    # image: coturn/coturn:4-debian
+    entrypoint: /opt/start-scripts/coturn-entrypoint.sh
     command: ["--log-file=stdout"]
     networks:
       wan:
-        ipv4_address: "$STUN_WAN_ADDR"
+        ipv4_address: "$COTURN_WAN_ADDR1"
+    env_file:
+     - .env
+    volumes:
+        - ./start-scripts:/opt/start-scripts
+    environment:
+      WAN_ADDR1: "$COTURN_WAN_ADDR1"
+      WAN_ADDR2: "$COTURN_WAN_ADDR2"
+    cap_add:
+      - ALL # TODO: check which for ip route
 
 
 networks:
